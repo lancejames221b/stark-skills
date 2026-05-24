@@ -1,0 +1,14 @@
+# Voice style config example.
+# Copy to ~/.voice-config/<your-name>.yml and fill in your own samples.
+# NEVER commit real configs — only this skeleton goes in the repo.
+
+name: <USER_NAME>
+voice_file: "<LOCAL_PATH>"
+rules:
+  - no_em_dashes
+  - casual_openers
+  - short_sentences
+swear_context:
+  casual: true
+  professional: false
+fallback: plain_english

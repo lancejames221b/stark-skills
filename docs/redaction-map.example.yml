@@ -1,0 +1,33 @@
+# Example redaction map.
+# Do NOT commit real values — only this skeleton goes in the repo.
+# Customize each pattern to match YOUR identifiers (name, handles, hostnames, etc).
+
+redactions:
+  # Your first/last name (replace with <USER_NAME>)
+  - pattern: "(?i)yourname"
+    replacement: "<USER_NAME>"
+
+  # User path (replace with <LOCAL_PATH>)
+  - pattern: "/home/[a-zA-Z0-9_-]+"
+    replacement: "<LOCAL_PATH>"
+
+  # Email addresses (replace with <EMAIL_ADDRESS>)
+  - pattern: >-
+      (?i)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+    replacement: "<EMAIL_ADDRESS>"
+
+  # Phone numbers (replace with <PHONE_NUMBER>)
+  - pattern: >-
+      \(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}
+    replacement: "<PHONE_NUMBER>"
+
+  # Private hostnames on your LAN (replace with <HOST_ALIAS>)
+  - pattern: >-
+      (?i)yourhost[\w-]*\.lan\b
+    replacement: "<HOST_ALIAS>"
+
+  # Your GitHub org/user (replace with <GITHUB_ORG>)
+  - pattern: "(?i)yourgithubhandle(?:[0-9]+)?"
+    replacement: "<GITHUB_ORG>"
+
+# Additional patterns added per skill as needed.

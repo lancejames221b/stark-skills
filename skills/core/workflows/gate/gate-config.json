@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "gateChannel": "1488177894596284588",
+  "timeoutMinutes": 15,
+  "approvalKeywords": ["approve", "yes", "send it", "go ahead", "do it", "make it so", "proceed", "ok", "confirmed"],
+  "denialKeywords": ["deny", "no", "cancel", "stop", "don't", "nope", "abort"],
+  "gatedActions": {
+    "personal-message": {
+      "policy": "human",
+      "description": "Personal messaging to anyone except Lance (+16462408992)",
+      "exemptions": ["+16462408992"],
+      "checks": []
+    },
+    "slack-post": {
+      "policy": "human",
+      "description": "Any Slack post or reply",
+      "checks": []
+    },
+    "calendar-invite": {
+      "policy": "human",
+      "description": "Calendar events with external attendees",
+      "checks": []
+    },
+    "git-push": {
+      "policy": "human",
+      "description": "Git push to any remote",
+      "checks": ["pii"]
+    },
+    "email-send": {
+      "policy": "human",
+      "description": "Sending emails (not drafts)",
+      "checks": []
+    },
+    "external-api-write": {
+      "policy": "human",
+      "description": "Create/update/delete on external APIs",
+      "checks": []
+    },
+    "file-share": {
+      "policy": "human",
+      "description": "Drive file sharing with other users",
+      "checks": []
+    }
+  },
+  "freeActions": [
+    "drafts",
+    "read operations",
+    "haivemind writes",
+    "notion pages",
+    "local files",
+    "discord in gate-skill channel",
+    "messages to +16462408992"
+  ],
+  "checks": {
+    "pii": {
+      "script": "python3 ~/dev/skills/git-pii-guard/scripts/pii_scan.py --diff --report",
+      "onPass": "continue",
+      "onFail": "block",
+      "exitCodes": {"0": "pass", "1": "block", "2": "warn"}
+    },
+    "secrets": {
+      "script": "python3 ~/dev/skills/git-pii-guard/scripts/pii_scan.py --diff --report --secrets-only",
+      "onPass": "continue",
+      "onFail": "block",
+      "exitCodes": {"0": "pass", "1": "block", "2": "warn"}
+    }
+  }
+}

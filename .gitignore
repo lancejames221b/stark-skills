@@ -1,0 +1,23 @@
+# Redaction maps (real ones should never be committed)
+redaction-map.yml
+
+# Generated inventories
+docs/inventory.md
+docs/inventory.json
+
+# Backups and temp files
+*.bak
+*.tmp
+*.swp
+*~
+.swo
+
+# Local inventories / scratch work
+docs/local-inventory.md
+_staging/
+docs/internal/
+.pi-lens/
+# OS junk files
+.DS_Store
+Thumbs.db
+_staging/

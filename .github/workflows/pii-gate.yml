@@ -1,0 +1,20 @@
+name: PII Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-no-pii:
+    name: validate-no-pii
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run PII validator
+        run: bash scripts/validate-no-pii.sh --path .
+
+      - name: Run layout validator
+        run: bash tests/validate-layout.sh

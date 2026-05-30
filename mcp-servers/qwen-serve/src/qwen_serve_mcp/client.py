@@ -139,6 +139,24 @@ def ensure_daemon(
             model=model,
         )
 
+    # Reuse a daemon already listening on the EXPLICIT port the caller passed,
+    # even if it differs from the model-derived eff_port. A daemon may have been
+    # launched plainly on `port` (e.g. `qwen serve --port 4198`) without the
+    # model->port offset; in that case eff_port points at a vacant port and the
+    # spawn path below would wrongly fail with "qwen not on PATH" on a host where
+    # qwen is not installed. If a healthy daemon answers at the requested port,
+    # bind the session there and skip both the offset probe and the spawn.
+    if port != eff_port:
+        explicit_base = base_url_for(port, host)
+        if health_ok(explicit_base, token):
+            return EnsureResult(
+                base_url=explicit_base,
+                started=False,
+                already_running=True,
+                port=port,
+                model=model,
+            )
+
     if health_ok(base, token):
         return EnsureResult(
             base_url=base,

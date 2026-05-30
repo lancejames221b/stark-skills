@@ -163,11 +163,14 @@ def ensure_daemon(
     model_tag = _safe_tag(model) if model else "default"
     log_path = os.path.join(runs_dir, f"serve-{model_tag}-{eff_port}.log")
 
-    cmd = [qwen_bin]
-    if model:
-        # Global option: must precede the `serve` subcommand.
-        cmd += ["--model", model]
-    cmd += [
+    # NOTE: `qwen serve` does NOT accept a --model flag, and a global -m/--model
+    # before the `serve` subcommand is rejected as "Unknown argument: model" in
+    # qwen 0.17.0 (verified live). The model is selected for the daemon's ACP
+    # child via the QWEN_MODEL environment variable instead, which it inherits.
+    # port_for_model() still gives each model its own daemon/port so a different
+    # model never reuses a daemon bound to another model.
+    cmd = [
+        qwen_bin,
         "serve",
         "--http-bridge",
         "--port",
@@ -179,6 +182,10 @@ def ensure_daemon(
     ]
     if token:
         cmd += ["--token", token]
+
+    child_env = os.environ.copy()
+    if model:
+        child_env["QWEN_MODEL"] = model
 
     log_fh = open(log_path, "ab")
     log_fh.write(
@@ -194,6 +201,7 @@ def ensure_daemon(
         stdin=subprocess.DEVNULL,
         start_new_session=True,
         cwd=workspace,
+        env=child_env,
     )
 
     deadline = time.time() + startup_timeout

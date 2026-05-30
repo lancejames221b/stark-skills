@@ -1,0 +1,20 @@
+[project]
+name = "qwen-serve-mcp"
+version = "0.1.0"
+description = "Thin MCP shim over the Qwen Code CLI HTTP daemon (qwen serve --http-bridge)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp==1.26.0",
+    "httpx>=0.27,<1.0",
+]
+
+[project.scripts]
+qwen-serve-mcp = "qwen_serve_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qwen_serve_mcp"]

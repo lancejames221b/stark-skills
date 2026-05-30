@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 qwen-serve-mcp = "qwen_serve_mcp.server:main"
+qwen-serve-mcp-http = "qwen_serve_mcp.http_server:main_http"
 
 [build-system]
 requires = ["hatchling"]

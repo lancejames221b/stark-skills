@@ -324,6 +324,15 @@ class SendResult:
     error: str | None = None
 
 
+@dataclass
+class FireResult:
+    session_id: str
+    base_url: str
+    cursor_event_id: str | None  # last event id seen before the POST; use as since_event_id in poll calls
+    status: str  # "fired" | "error"
+    error: str | None = None
+
+
 def _parse_step_block(text: str) -> str | None:
     """Pull the trailing 'STEP - PASS|BLOCKED' block out of assistant output."""
     lines = text.splitlines()
@@ -493,6 +502,78 @@ def send_prompt(
         stop_reason=stop_reason,
         last_step_block=_parse_step_block(output),
         error=error,
+    )
+
+
+def fire_prompt(
+    base_url: str,
+    session_id: str,
+    prompt_text: str,
+    token: str | None = None,
+    system_prompt_append: str | None = None,
+    files: list[str] | None = None,
+) -> FireResult:
+    """POST the turn to start it, capture the SSE cursor just BEFORE the first
+    chunk arrives, then return immediately without draining.
+
+    The caller polls fetch_events(since_event_id=result.cursor_event_id) to
+    read output chunks as they stream. Turn completion is signaled by an
+    agent_turn_complete (or similar) event or when the polling loop sees no
+    new events for an idle window.
+
+    Returns FireResult. On error (e.g. POST rejected) status="error" with
+    error set and cursor_event_id=None.
+    """
+    _validate_files(files)
+    headers = {**_auth_headers(token), "Content-Type": "application/json"}
+    body = {"prompt": _content_blocks(prompt_text, system_prompt_append, files)}
+
+    # Open the SSE stream, read events until we see the first one (so we have
+    # a valid Last-Event-ID to hand back), then fire the POST and return.
+    cursor: str | None = None
+    try:
+        with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as c:
+            # Grab the most recent event id from the stream before we fire,
+            # so the caller can replay from there.
+            with c.stream(
+                "GET",
+                f"{base_url}/session/{session_id}/events",
+                headers=_auth_headers(token),
+            ) as ev_resp:
+                ev_resp.raise_for_status()
+                # Read up to 5 events (or hit the idle timeout) just to
+                # get the current event cursor. The ring buffer replays
+                # from Last-Event-ID so we will not miss anything.
+                deadline = time.time() + 3.0
+                for ev_id, name, _ in _iter_sse(ev_resp):
+                    if ev_id is not None:
+                        cursor = ev_id
+                    if time.time() > deadline:
+                        break
+    except Exception:
+        pass  # cursor stays None; polling will start from the beginning
+
+    # Fire the POST in a daemon thread (we do NOT wait for it to complete).
+    import threading
+
+    def _do_post():
+        try:
+            httpx.post(
+                f"{base_url}/session/{session_id}/prompt",
+                headers=headers,
+                json=body,
+                timeout=httpx.Timeout(900.0, connect=10.0),
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_do_post, daemon=True).start()
+
+    return FireResult(
+        session_id=session_id,
+        base_url=base_url,
+        cursor_event_id=cursor,
+        status="fired",
     )
 
 

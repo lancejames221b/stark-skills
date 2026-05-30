@@ -154,6 +154,32 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="qwen_session_fire",
+            description=(
+                "Fire a prompt into a warm session WITHOUT blocking (non-blocking "
+                "dispatch). POSTs the prompt to start the turn, returns immediately "
+                "with a cursor_event_id. Poll qwen_session_events(since_event_id="
+                "cursor_event_id) in a loop to stream output chunks. Use instead of "
+                "qwen_session_send when you want visibility into long-running steps "
+                "without a blocking wait."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                    "prompt": {"type": "string"},
+                    "base_url": {"type": "string"},
+                    "token": {"type": "string"},
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional absolute file paths to attach as @path multimodal references.",
+                    },
+                },
+                "required": ["session_id", "prompt", "base_url"],
+            },
+        ),
+        Tool(
             name="qwen_session_events",
             description=(
                 "Fetch recent SSE events for a session (GET /session/:id/events), "
@@ -296,6 +322,39 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 "elapsed_ms": res.elapsed_ms,
                 "stop_reason": res.stop_reason,
                 "last_step_block": res.last_step_block,
+                "error": res.error,
+            }
+        )
+
+    if name == "qwen_session_fire":
+        sid = arguments["session_id"]
+        files = arguments.get("files")
+        try:
+            client._validate_files(files)
+        except client.MissingFilesError as e:
+            return _ok(
+                {
+                    "session_id": sid,
+                    "cursor_event_id": None,
+                    "status": "error",
+                    "error": f"invalid files: {e}",
+                }
+            )
+        system_append = _PENDING_SYSTEM.pop(sid, None)
+        res = await asyncio.to_thread(
+            client.fire_prompt,
+            arguments["base_url"],
+            sid,
+            arguments["prompt"],
+            arguments.get("token"),
+            system_append,
+            files,
+        )
+        return _ok(
+            {
+                "session_id": res.session_id,
+                "cursor_event_id": res.cursor_event_id,
+                "status": res.status,
                 "error": res.error,
             }
         )

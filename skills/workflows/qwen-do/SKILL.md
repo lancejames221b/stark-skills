@@ -48,6 +48,31 @@ qwen-do --warm "TASK: <next step>"  # carry context across steps of ONE task
 echo "TASK" | qwen-do               # prompt on stdin
 ```
 
+## Preferred channel for an interactive, watched, warm run: tmux over ssh
+
+`qwen-do` is the default and is fresh-per-step (no warm carryover unless `--warm`). When you instead
+want a PERSISTENT warm qwen REPL that a human can also watch live, run `qwen --yolo` in a `tmux`
+session ON the executor box and drive it over ssh. Prefer this over any terminal-control MCP that
+screen-scrapes a GUI terminal (those need the app open, render the TUI as garbage when read, time out
+on long inference, and die if the machine sleeps).
+
+```bash
+# start a detached session running the interactive REPL
+ssh host 'tmux new-session -d -s NAME -c REPO \
+  "export QWEN_MODEL=<model> QWEN_BASE_URL=<url> QWEN_CODE_SUPPRESS_YOLO_WARNING=1; qwen --yolo"'
+# fire a step: ship a quote-heavy prompt to a file, send it, then send Enter SEPARATELY
+base64 -w0 step.md | ssh host 'base64 -d > /tmp/step.md'
+ssh host 'tmux send-keys -t NAME "$(cat /tmp/step.md)"; sleep 1; tmux send-keys -t NAME Enter'
+# read (clean) and scrape scrollback for results
+ssh host 'tmux capture-pane -t NAME -p'           # current screen
+ssh host 'tmux capture-pane -t NAME -p -S -150'   # scrollback
+```
+
+Gotchas: send the prompt text and Enter as TWO `send-keys` calls (combining can race into a partial
+submit); ship quote-heavy prompts via a file, never interpolate inline quotes into the ssh+tmux line;
+VERIFY artifacts on disk (ls / git diff / re-run the smoke), never trust the pane text. A human
+watches by attaching to the SAME session: `tmux attach -t NAME`.
+
 ## Configuration (no host/IP baked in)
 
 Set these for your own local model server (LM Studio, Ollama, vLLM, anything OpenAI-compatible):
